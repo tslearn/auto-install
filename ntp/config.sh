@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-NTP_IP="192.168.0.73"
+NTP_IP="192.168.0.71"
 
 
 NTP_SERVICE_NETWORKS="net01 net02"
