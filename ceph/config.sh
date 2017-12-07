@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+ROOT_INSTALL_DIR="/opt/ceph-scripts"
+
+MONITOR_CLUSTER_NAMES="mon01"
+MONITOR_IP_mon01="192.168.0.81"
+
+OSD_CLUSTER_NAMES="osd01 osd02 osd03"
+OSD_IP_osd01="192.168.0.91"
+OSD_IP_osd02="192.168.0.92"
+OSD_IP_osd03="192.168.0.93"
+
+ADMIN_IP="192.168.0.82"
+ADMIN_HOSTNAME="ceph-admin"
+
+CLIENT_IP="192.168.0.83"
+CLIENT_HOSTNAME="ceph-client"
+
+CEPH_USER_NAME="ceph"
+NTP_SERVER="192.168.0.71"
+
