@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 readonly ROOT=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source ${ROOT}/../libs/base.sh
-
+source ${ROOT}/config.sh
 
 # ${1} deploy ip
-# ${2} deploy password
+# ${2} deploy user
+# ${3} deploy password
 function deployEtcHosts() {
   local monHosts=""
   local osdHosts=""
@@ -30,55 +31,33 @@ ${ADMIN_IP}       ${ADMIN_HOSTNAME}
 ${CLIENT_IP}       ${CLIENT_HOSTNAME}
 EOF`
 
-  forceWriteRemoteFile ${1} "root" ${2} "/etc/hosts" ${content}
+  forceWriteRemoteFile ${1} ${2} ${3} "/etc/hosts" ${content}
 }
 
 # ${1} deploy ip
-# ${2} deploy password
-# ${3} ntp server
+# ${2} deploy user
+# ${3} deploy password
+# ${4} ntp server
 function deployNtpdate() {
-  runRemoteCommand ${1} "root" ${2} "timedatectl set-timezone Asia/Shanghai"
-  runRemoteCommand ${1} "root" ${2} "yum install ntpdate -y"
-  runRemoteCommand ${1} "root" ${2} "/sbin/ntpdate ${3}"
-  runRemoteCommand ${1} "root" ${2} "echo '*/20 * * * * /sbin/ntpdate  ${3} >> /var/log/ntpdate.log' > ntpcrontab"
-  runRemoteCommand ${1} "root" ${2} "crontab ntpcrontab"
-  runRemoteCommand ${1} "root" ${2} "rm -f ntpcrontab"
+  runRemoteCommand ${1} ${2} ${3} "timedatectl set-timezone Asia/Shanghai"
+  runRemoteCommand ${1} ${2} ${3} "yum install ntpdate -y"
+  runRemoteCommand ${1} ${2} ${3} "/sbin/ntpdate ${4}"
+  runRemoteCommand ${1} ${2} ${3} "echo '*/20 * * * * /sbin/ntpdate  ${4} >> /var/log/ntpdate.log' > ntpcrontab"
+  runRemoteCommand ${1} ${2} ${3} "crontab ntpcrontab"
+  runRemoteCommand ${1} ${2} ${3} "rm -f ntpcrontab"
 }
 
 # ${1} deploy ip
-# ${2} deploy password
-# ${3} user name
-# ${4} user password
-function createCephUser() {
-/usr/bin/expect << EOF
-set timeout 120
-spawn ssh root@${1}
-expect {
-  "password:" { send "${2}\r"}
-  "yes/no" {  send "yes\r"; exp_continue }
-}
-
-expect "root@*\]#"
-send "useradd -d /home/${3} -m ${3} \r"
-
-expect "root@*\]#"
-send "passwd ${3} \r"
-expect "?assword:"
-send -- "${4}\r"
-expect "?assword:"
-send -- "${4}\r"
-
-expect "root@*\]#"
-send "echo '${3} ALL = (root) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/${3} \r"
-expect "root@*\]#"
-send "chmod 0440 /etc/sudoers.d/${3} \r"
-expect "root@*\]#"
-send "sed -i s'/Defaults requiretty/#Defaults requiretty'/g /etc/sudoers \r"
-
-expect "root@*\]#"
-send "logout\r"
-EOF
-echo
+# ${2} deploy user
+# ${3} deploy password
+# ${4} user name
+# ${5} user password
+function createUser() {
+  runRemoteCommand ${1} ${2} ${3} "useradd -d /home/${4} -m ${4}"
+  runRemoteCommand ${1} ${2} ${3} "passwd ${4}" ${5}
+  runRemoteCommand ${1} ${2} ${3} "echo '${4} ALL = (root) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/${3}"
+  runRemoteCommand ${1} ${2} ${3} "chmod 0440 /etc/sudoers.d/${4}"
+  runRemoteCommand ${1} ${2} ${3} "sed -i s'/Defaults requiretty/#Defaults requiretty'/g /etc/sudoers"
 }
 
 # ${1} deploy ip
@@ -87,36 +66,30 @@ echo
 # ${4} copy ip / hostname
 # ${5} copy user
 # ${6} copy password
-
 function copySSHId() {
-/usr/bin/expect << EOF
-set timeout 120
-spawn ssh ${2}@${1}
-expect {
-  "password:" { send "${3}\r"}
-  "yes/no" {  send "yes\r"; exp_continue }
-}
-
-expect "*${2}@*\]"
-send "sudo ssh-keyscan ${4}  >> ~/.ssh/known_hosts \r"
-expect "*${2}@*\]"
-send "ssh-copy-id ${5}@${4} \r"
-expect "password:"
-send "${6}\r"
-
-expect "*${2}@*\]"
-send "logout\r"
-EOF
-echo
+  runRemoteCommand ${1} ${2} ${3} "sudo ssh-keyscan ${4}  >> ~/.ssh/known_hosts"
+  runRemoteCommand ${1} ${2} ${3} "ssh-copy-id ${5}@${4}" ${6}
 }
 
 # ${1} deploy ip
-# ${2} deploy password
+# ${2} deploy user
+# ${3} deploy password
+# ${4} remote user
+# ${5} remote password
 function deploySSHPassport() {
   local monHosts=""
   local osdHosts=""
   local name
-  local content=`cat<<EOF
+  local content
+
+  for name in ${MONITOR_CLUSTER_NAMES}; do
+    monHosts=${monHosts}$'\n'"Host ${name}"$'\n'"  Hostname ${name}"$'\n'"  User ${CEPH_USER_NAME}"
+  done
+  for name in ${OSD_CLUSTER_NAMES}; do
+    osdHosts=${osdHosts}$'\n'"Host ${name}"$'\n'"  Hostname ${name}"$'\n'"  User ${CEPH_USER_NAME}"
+  done
+
+  content=`cat<<EOF
 Host ${ADMIN_HOSTNAME}
   Hostname ${ADMIN_HOSTNAME}
   User ${CEPH_USER_NAME}
@@ -127,30 +100,67 @@ ${monHosts}
 ${osdHosts}
 EOF`
 
-  for name in ${MONITOR_CLUSTER_NAMES}; do
-    monHosts=${monHosts}$'\n'"Host ${name}"$'\n'"  Hostname ${name}"$'\n'"  User ${CEPH_USER_NAME}"
-  done
-  for name in ${OSD_CLUSTER_NAMES}; do
-    osdHosts=${osdHosts}$'\n'"Host ${name}"$'\n'"  Hostname ${name}"$'\n'"  User ${CEPH_USER_NAME}"
-  done
-
-  forceWriteRemoteFile ${1} ${CEPH_USER_NAME} ${2} "~/.ssh/config" ${content}
-  runRemoteCommand ${1} ${CEPH_USER_NAME} ${2} "chmod 644 ~/.ssh/config"
-  runRemoteCommand ${1} ${CEPH_USER_NAME} ${2} "ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa"
+  forceWriteRemoteFile ${1} ${2} ${3} "~/.ssh/config" ${content}
+  runRemoteCommand ${1} ${2} ${3}  "chmod 644 ~/.ssh/config"
+  runRemoteCommand ${1} ${2} ${3}  "ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa"
 
   for name in ${MONITOR_CLUSTER_NAMES}; do
-    copySSHId  ${1} ${CEPH_USER_NAME} ${2} ${name} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
+    copySSHId  ${1} ${2} ${3} ${name} ${4} ${5}
   done
   for name in ${OSD_CLUSTER_NAMES}; do
-    copySSHId  ${1} ${CEPH_USER_NAME} ${2} ${name} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
+    copySSHId  ${1} ${2} ${3} ${name} ${4} ${5}
   done
-
-  copySSHId  ${1} ${CEPH_USER_NAME} ${2} ${ADMIN_HOSTNAME} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
-  copySSHId  ${1} ${CEPH_USER_NAME} ${2} ${CLIENT_HOSTNAME} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
 }
 
+function initialCeph() {
+  local name
+  local ip
+  local password
+  for name in ${MONITOR_CLUSTER_NAMES}; do
+    ip=`eval echo '$'"MONITOR_IP_${name}"`
+    password=`eval echo '$'"MONITOR_PASSWORD_${name}"`
+    deployEtcHosts ${ip} "root" ${password}
+    deployHostname ${ip} "root" ${password} ${name}
+    createUser ${ip} "root" ${password} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
+    runRemoteCommand ${ip} "root" ${password}  "setenforce 0"
+    runRemoteCommand ${ip} "root" ${password}  "firewall-cmd --zone=public --add-service=ceph-mon --permanent"
+    deployNtpdate ${ip} "root" ${password} ${NTP_SERVER}
+  done
 
-deployNtpdate "192.168.0.81" "World2019" "192.168.0.71"
+  for name in ${OSD_CLUSTER_NAMES}; do
+    ip=`eval echo '$'"OSD_IP_${name}"`
+    password=`eval echo '$'"OSD_PASSWORD_${name}"`
+
+    deployEtcHosts ${ip} "root" ${password}
+    deployHostname ${ip} "root" ${password} ${name}
+    createUser ${ip} "root" ${password} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
+    runRemoteCommand ${ip} "root" ${password}  "setenforce 0"
+    runRemoteCommand ${ip} "root" ${password}  "firewall-cmd --zone=public --add-service=ceph --permanent"
+    deployNtpdate ${ip} "root" ${password} ${NTP_SERVER}
+  done
+
+  deployEtcHosts ${ADMIN_IP} "root" ${ADMIN_PASSWORD}
+  deployHostname ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${ADMIN_HOSTNAME}
+  createUser ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
+  deployNtpdate ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${NTP_SERVER}
+}
+
+function installCephDeploy() {
+  local content
+  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+
+  content=`cat<<EOF
+[ceph-noarch]
+name=Ceph noarch packages
+baseurl=https://download.ceph.com/rpm-luminous/el7/noarch
+enabled=1
+gpgcheck=1
+type=rpm-md
+gpgkey=https://download.ceph.com/keys/release.asc
+EOF`
+
+  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "yum install ceph-deploy -y"
+}
 
 ########################################################
 # Input Password
@@ -195,18 +205,8 @@ CEPH_USER_PASSWORD="World2019"
 #done
 
 ########################################################
-# Recover VM
+# Start
 ########################################################
-#${ROOT}/init-esxi.sh
-
-
-########################################################
-# Initial OS
-########################################################
-#initialOS
-#
-#deploySSHPassport ${ADMIN_IP} ${CEPH_USER_PASSWORD}
-#
-#installCephDeploy ${ADMIN_IP} ${ADMIN_PASSWORD}
-
-
+${ROOT}/init-esxi.sh
+initialCeph
+installCephDeploy

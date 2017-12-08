@@ -34,8 +34,9 @@ function forceWriteFile() {
 
 # ${1} remote ip or hostname
 # ${2} remote user
-# ${3} remote password
+# ${3} remote password (for ssh only)
 # ${4} remote command
+# ${5} remote command password if command needs
 function runRemoteCommand() {
   local op
   if [ "${2}" == "root" ]; then
@@ -49,14 +50,19 @@ set timeout 300
 spawn ssh ${2}@${1}
 expect {
   "password:" { send "${3}\r"}
+  "Password:" { send "${3}\r"}
   "yes/no" {  send "yes\r"; exp_continue }
 }
 
 expect "*${2}@*\]${op}"
 send "${4} \r"
 
-expect "*${2}@*\]${op}"
-send "logout\r"
+expect {
+  "password:" { send "${5}\r"; exp_continue }
+  "Password:" { send "${5}\r"; exp_continue }
+  "*${2}@*\]${op}" {  send "logout\r"}
+}
+
 EOF
   echo
 }
@@ -71,6 +77,7 @@ function copyRemoteFile() {
 spawn scp ${4} ${2}@${1}:${5}
 expect {
   "password:" { send "${3}\r"}
+  "Password:" { send "${3}\r"}
   "yes/no" {  send "yes\r"; exp_continue }
 }
 expect "100%"
