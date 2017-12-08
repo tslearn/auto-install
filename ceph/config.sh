@@ -10,10 +10,9 @@ OSD_CLUSTER_NAMES="osd01 osd02 osd03"
 OSD_IP_osd01="192.168.0.91"
 OSD_DISK_osd01="sdb"
 OSD_IP_osd02="192.168.0.92"
-OSD_DISK_osd02="sdb sdc"
+OSD_DISK_osd02="sdb"
 OSD_IP_osd03="192.168.0.93"
-OSD_DISK_osd03="sdb sdc sdd"
-
+OSD_DISK_osd03="sdb"
 
 NTP_SERVER="192.168.0.71"
 CEPH_USER_NAME="ceph"
