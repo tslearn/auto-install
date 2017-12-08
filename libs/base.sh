@@ -47,7 +47,7 @@ function runRemoteCommand() {
   fi
 
   /usr/bin/expect <<EOF
-set timeout 300
+set timeout 1800
 spawn ssh ${2}@${1}
 expect {
   "password:" { send "${3}\r"}
