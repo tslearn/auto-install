@@ -3,6 +3,23 @@ readonly ROOT=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source ${ROOT}/../libs/base.sh
 source ${ROOT}/config.sh
 
+function getOSDDiskArray() {
+  local osd
+  local disk
+  local tmp
+  local diskArray=""
+
+  for osd in ${OSD_CLUSTER_NAMES}; do
+    for disk in `eval echo '$'"OSD_DISK_${osd}"`; do
+      diskArray="${diskArray} ${osd}:${disk}"
+    done
+  done
+
+  echo "${diskArray}"
+}
+
+
+
 # ${1} deploy ip
 # ${2} deploy user
 # ${3} deploy password
@@ -39,12 +56,12 @@ EOF`
 # ${3} deploy password
 # ${4} ntp server
 function deployNtpdate() {
-  runRemoteCommand ${1} ${2} ${3} "timedatectl set-timezone Asia/Shanghai"
-  runRemoteCommand ${1} ${2} ${3} "yum install ntpdate -y"
-  runRemoteCommand ${1} ${2} ${3} "/sbin/ntpdate ${4}"
-  runRemoteCommand ${1} ${2} ${3} "echo '*/20 * * * * /sbin/ntpdate  ${4} >> /var/log/ntpdate.log' > ntpcrontab"
-  runRemoteCommand ${1} ${2} ${3} "crontab ntpcrontab"
-  runRemoteCommand ${1} ${2} ${3} "rm -f ntpcrontab"
+  runRemoteCommand ${1} ${2} ${3} "~" "timedatectl set-timezone Asia/Shanghai"
+  runRemoteCommand ${1} ${2} ${3} "~" "yum install ntpdate -y"
+  runRemoteCommand ${1} ${2} ${3} "~" "/sbin/ntpdate ${4}"
+  runRemoteCommand ${1} ${2} ${3} "~" "echo '*/20 * * * * /sbin/ntpdate  ${4} >> /var/log/ntpdate.log' > ntpcrontab"
+  runRemoteCommand ${1} ${2} ${3} "~" "crontab ntpcrontab"
+  runRemoteCommand ${1} ${2} ${3} "~" "rm -f ntpcrontab"
 }
 
 # ${1} deploy ip
@@ -53,11 +70,11 @@ function deployNtpdate() {
 # ${4} user name
 # ${5} user password
 function createUser() {
-  runRemoteCommand ${1} ${2} ${3} "useradd -d /home/${4} -m ${4}"
-  runRemoteCommand ${1} ${2} ${3} "passwd ${4}" ${5}
-  runRemoteCommand ${1} ${2} ${3} "echo '${4} ALL = (root) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/${4}"
-  runRemoteCommand ${1} ${2} ${3} "chmod 0440 /etc/sudoers.d/${4}"
-  runRemoteCommand ${1} ${2} ${3} "sed -i s'/Defaults requiretty/#Defaults requiretty'/g /etc/sudoers"
+  runRemoteCommand ${1} ${2} ${3} "~" "useradd -d /home/${4} -m ${4}"
+  runRemoteCommand ${1} ${2} ${3} "~" "passwd ${4}" ${5}
+  runRemoteCommand ${1} ${2} ${3} "~" "echo '${4} ALL = (root) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/${4}"
+  runRemoteCommand ${1} ${2} ${3} "~" "chmod 0440 /etc/sudoers.d/${4}"
+  runRemoteCommand ${1} ${2} ${3} "~" "sed -i s'/Defaults requiretty/#Defaults requiretty'/g /etc/sudoers"
 }
 
 # ${1} deploy ip
@@ -67,8 +84,8 @@ function createUser() {
 # ${5} copy user
 # ${6} copy password
 function copySSHId() {
-  runRemoteCommand ${1} ${2} ${3} "sudo ssh-keyscan ${4}  >> ~/.ssh/known_hosts"
-  runRemoteCommand ${1} ${2} ${3} "ssh-copy-id ${5}@${4}" ${6}
+  runRemoteCommand ${1} ${2} ${3} "~" "sudo ssh-keyscan ${4}  >> ~/.ssh/known_hosts"
+  runRemoteCommand ${1} ${2} ${3} "~" "ssh-copy-id ${5}@${4}" ${6}
 }
 
 # ${1} deploy ip
@@ -101,8 +118,8 @@ ${osdHosts}
 EOF`
 
   forceWriteRemoteFile ${1} ${2} ${3} "~/.ssh/config" ${content}
-  runRemoteCommand ${1} ${2} ${3}  "chmod 644 ~/.ssh/config"
-  runRemoteCommand ${1} ${2} ${3}  "ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa"
+  runRemoteCommand ${1} ${2} ${3} "~" "chmod 644 ~/.ssh/config"
+  runRemoteCommand ${1} ${2} ${3} "~" "ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa"
 
   for name in ${MONITOR_CLUSTER_NAMES}; do
     copySSHId  ${1} ${2} ${3} ${name} ${4} ${5}
@@ -120,10 +137,10 @@ function initialCeph() {
     ip=`eval echo '$'"MONITOR_IP_${name}"`
     password=`eval echo '$'"MONITOR_PASSWORD_${name}"`
     deployEtcHosts ${ip} "root" ${password}
-    runRemoteCommand ${ip} "root" ${password}  "hostnamectl set-hostname ${name}"
+    runRemoteCommand ${ip} "root" ${password} "~" "hostnamectl set-hostname ${name}"
     createUser ${ip} "root" ${password} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
-    runRemoteCommand ${ip} "root" ${password}  "setenforce 0"
-    runRemoteCommand ${ip} "root" ${password}  "firewall-cmd --zone=public --add-service=ceph-mon --permanent"
+    runRemoteCommand ${ip} "root" ${password} "~" "setenforce 0"
+    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --zone=public --add-service=ceph-mon --permanent"
     deployNtpdate ${ip} "root" ${password} ${NTP_SERVER}
   done
 
@@ -132,35 +149,45 @@ function initialCeph() {
     password=`eval echo '$'"OSD_PASSWORD_${name}"`
 
     deployEtcHosts ${ip} "root" ${password}
-    runRemoteCommand ${ip} "root" ${password}  "hostnamectl set-hostname ${name}"
+    runRemoteCommand ${ip} "root" ${password} "~" "hostnamectl set-hostname ${name}"
     createUser ${ip} "root" ${password} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
-    runRemoteCommand ${ip} "root" ${password}  "setenforce 0"
-    runRemoteCommand ${ip} "root" ${password}  "firewall-cmd --zone=public --add-service=ceph --permanent"
+    runRemoteCommand ${ip} "root" ${password} "~" "setenforce 0"
+    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --zone=public --add-service=ceph --permanent"
     deployNtpdate ${ip} "root" ${password} ${NTP_SERVER}
   done
 
   deployEtcHosts ${ADMIN_IP} "root" ${ADMIN_PASSWORD}
-  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD}  "hostnamectl set-hostname ${ADMIN_HOSTNAME}"
+  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "hostnamectl set-hostname ${ADMIN_HOSTNAME}"
   createUser ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
   deployNtpdate ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${NTP_SERVER}
 }
 
 function installCephDeploy() {
   local content
-  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
 
   content=`cat<<EOF
 [ceph-noarch]
 name=Ceph noarch packages
-baseurl=https://download.ceph.com/rpm-luminous/el7/noarch
+baseurl=https://download.ceph.com/rpm-kraken/el7/noarch
 enabled=1
 gpgcheck=1
 type=rpm-md
 gpgkey=https://download.ceph.com/keys/release.asc
 EOF`
 
-  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "yum install ceph-deploy -y"
+  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "yum install ceph-deploy -y"
+  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "mkdir -p ${CEPH_CLUSTER_ADMIN_DIRECTORY}"
+  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "chown ${CEPH_USER_NAME}:${CEPH_USER_NAME} ${CEPH_CLUSTER_ADMIN_DIRECTORY}"
+
+  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy new ${MONITOR_CLUSTER_NAMES}"
+  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "echo 'public network = ${CEPH_PUBLIC_NETWORK}' >> ceph.conf"
+  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy install ${MONITOR_CLUSTER_NAMES} ${OSD_CLUSTER_NAMES}"
+  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy mon create-initial"
+  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy admin ${MONITOR_CLUSTER_NAMES} ${OSD_CLUSTER_NAMES}"
+  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy osd create $(getOSDDiskArray)"
 }
+
 
 function startInstall() {
   ${ROOT}/init-esxi.sh

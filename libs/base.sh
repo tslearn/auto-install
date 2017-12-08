@@ -35,6 +35,7 @@ function forceWriteFile() {
 # ${1} remote ip or hostname
 # ${2} remote user
 # ${3} remote password (for ssh only)
+# ${4} remote work directory
 # ${4} remote command
 # ${5} remote command password if command needs
 function runRemoteCommand() {
@@ -55,11 +56,13 @@ expect {
 }
 
 expect "*${2}@*\]${op}"
-send "${4} \r"
+send "cd ${4} \r"
+expect "*${2}@*\]${op}"
+send "${5} \r"
 
 expect {
-  "password:" { send "${5}\r"; exp_continue }
-  "Password:" { send "${5}\r"; exp_continue }
+  "password:" { send "${6}\r"; exp_continue }
+  "Password:" { send "${6}\r"; exp_continue }
   "*${2}@*\]${op}" {  send "logout\r"}
 }
 
@@ -92,7 +95,7 @@ EOF
 # ${5} file content
 function forceWriteRemoteFile() {
   forceWriteFile ~/copy_asiwniwlsnixe "${5}"
-  runRemoteCommand ${1} ${2} ${3} "mkdir -p `dirname ${4}`"
+  runRemoteCommand ${1} ${2} ${3} "~" "mkdir -p `dirname ${4}`"
   copyRemoteFile ${1} ${2} ${3} ~/copy_asiwniwlsnixe ${4}
   removeFile ~/copy_asiwniwlsnixe
 }
