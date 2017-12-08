@@ -55,7 +55,7 @@ function deployNtpdate() {
 function createUser() {
   runRemoteCommand ${1} ${2} ${3} "useradd -d /home/${4} -m ${4}"
   runRemoteCommand ${1} ${2} ${3} "passwd ${4}" ${5}
-  runRemoteCommand ${1} ${2} ${3} "echo '${4} ALL = (root) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/${3}"
+  runRemoteCommand ${1} ${2} ${3} "echo '${4} ALL = (root) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/${4}"
   runRemoteCommand ${1} ${2} ${3} "chmod 0440 /etc/sudoers.d/${4}"
   runRemoteCommand ${1} ${2} ${3} "sed -i s'/Defaults requiretty/#Defaults requiretty'/g /etc/sudoers"
 }
@@ -120,7 +120,7 @@ function initialCeph() {
     ip=`eval echo '$'"MONITOR_IP_${name}"`
     password=`eval echo '$'"MONITOR_PASSWORD_${name}"`
     deployEtcHosts ${ip} "root" ${password}
-    deployHostname ${ip} "root" ${password} ${name}
+    runRemoteCommand ${ip} "root" ${password}  "hostnamectl set-hostname ${name}"
     createUser ${ip} "root" ${password} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
     runRemoteCommand ${ip} "root" ${password}  "setenforce 0"
     runRemoteCommand ${ip} "root" ${password}  "firewall-cmd --zone=public --add-service=ceph-mon --permanent"
@@ -132,7 +132,7 @@ function initialCeph() {
     password=`eval echo '$'"OSD_PASSWORD_${name}"`
 
     deployEtcHosts ${ip} "root" ${password}
-    deployHostname ${ip} "root" ${password} ${name}
+    runRemoteCommand ${ip} "root" ${password}  "hostnamectl set-hostname ${name}"
     createUser ${ip} "root" ${password} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
     runRemoteCommand ${ip} "root" ${password}  "setenforce 0"
     runRemoteCommand ${ip} "root" ${password}  "firewall-cmd --zone=public --add-service=ceph --permanent"
@@ -140,7 +140,7 @@ function initialCeph() {
   done
 
   deployEtcHosts ${ADMIN_IP} "root" ${ADMIN_PASSWORD}
-  deployHostname ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${ADMIN_HOSTNAME}
+  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD}  "hostnamectl set-hostname ${ADMIN_HOSTNAME}"
   createUser ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
   deployNtpdate ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${NTP_SERVER}
 }

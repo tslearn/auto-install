@@ -91,8 +91,8 @@ EOF
 # ${4} file path
 # ${5} file content
 function forceWriteRemoteFile() {
-  forceWriteFile ~/asiwniwlsnixe "${5}"
+  forceWriteFile ~/copy_asiwniwlsnixe "${5}"
   runRemoteCommand ${1} ${2} ${3} "mkdir -p `dirname ${4}`"
-  copyRemoteFile ${1} ${2} ${3} ~/asiwniwlsnixe ${4}
-  removeFile ~/asiwniwlsnixe
+  copyRemoteFile ${1} ${2} ${3} ~/copy_asiwniwlsnixe ${4}
+  removeFile ~/copy_asiwniwlsnixe
 }
