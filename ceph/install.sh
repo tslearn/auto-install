@@ -123,59 +123,78 @@ EOF`
   done
 }
 
-function initialCeph() {
-  local name
-  local ip
-  local password
-  for name in ${MONITOR_CLUSTER_NAMES}; do
-    ip=`eval echo '$'"MONITOR_IP_${name}"`
-    password=`eval echo '$'"MONITOR_PASSWORD_${name}"`
-    deployEtcHosts ${ip} "root" ${password}
-    runRemoteCommand ${ip} "root" ${password} "~" "hostnamectl set-hostname ${name}"
-    createUser ${ip} "root" ${password} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
-    runRemoteCommand ${ip} "root" ${password} "~" "setenforce 0"
-    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --zone=public --add-service=ceph-mon --permanent"
-    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --reload"
-    deployNtpdate ${ip} "root" ${password} ${NTP_SERVER}
-  done
-
-  for name in ${OSD_CLUSTER_NAMES}; do
-    ip=`eval echo '$'"OSD_IP_${name}"`
-    password=`eval echo '$'"OSD_PASSWORD_${name}"`
-
-    deployEtcHosts ${ip} "root" ${password}
-    runRemoteCommand ${ip} "root" ${password} "~" "hostnamectl set-hostname ${name}"
-    createUser ${ip} "root" ${password} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
-    runRemoteCommand ${ip} "root" ${password} "~" "setenforce 0"
-    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --zone=public --add-service=ceph --permanent"
-    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --reload"
-    deployNtpdate ${ip} "root" ${password} ${NTP_SERVER}
-  done
-
-  deployEtcHosts ${ADMIN_IP} "root" ${ADMIN_PASSWORD}
-  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "hostnamectl set-hostname ${ADMIN_HOSTNAME}"
-  createUser ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
-  deployNtpdate ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${NTP_SERVER}
-
-  deploySSHPassport ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
-}
-
-function installCephDeploy() {
+# ${1} deploy ip
+# ${2} deploy user
+# ${3} deploy password
+function updateRepo() {
   local content
-  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+
+  runRemoteCommand ${1} ${2} ${3} "~" "yum clean all"
+  runRemoteCommand ${1} ${2} ${3} "~" "rm -rf /var/cache/yum"
+  runRemoteCommand ${1} ${2} ${3} "~" "rm -rf /etc/yum.repos.d/*.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "curl http://mirrors.163.com/.help/CentOS7-Base-163.repo > /etc/yum.repos.d/CentOS-Base.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "curl http://mirrors.aliyun.com/repo/epel-7.repo > /etc/yum.repos.d/epel.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "sed -i '/aliyuncs/d' /etc/yum.repos.d/CentOS-Base.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "sed -i '/aliyuncs/d' /etc/yum.repos.d/epel.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "sed -i 's/\\\$releasever/7/g' /etc/yum.repos.d/CentOS-Base.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "sed -i s'/enabled=1/enabled=0'/g /etc/yum/pluginconf.d/fastestmirror.conf"
 
   content=`cat<<EOF
 [ceph-noarch]
 name=Ceph noarch packages
-baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/noarch/
+baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/noarch
 enabled=1
 gpgcheck=1
 type=rpm-md
 gpgkey=https://download.ceph.com/keys/release.asc
+priority=10
 EOF`
-  forceWriteRemoteFile ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "/etc/yum.repos.d/ceph.repo" "${content}"
-  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "chmod 644 /etc/yum.repos.d/ceph.repo"
 
+  forceWriteRemoteFile ${1} ${2} ${3} "/etc/yum.repos.d/ceph.repo" "${content}"
+  runRemoteCommand ${1} ${2} ${3} "~" "yum makecache"
+  #runRemoteCommand ${1} ${2} ${3} "~" "yum update -y"
+}
+
+
+# ${1} deploy ip
+# ${2} deploy user
+# ${3} deploy password
+# ${4} hostname
+# ${5} ceph user name
+# ${6} ceph user password
+function initialNode() {
+  deployEtcHosts ${1} ${2} ${3}
+  runRemoteCommand ${1} ${2} ${3} "~" "hostnamectl set-hostname ${4}"
+  createUser ${1} ${2} ${3} ${5} ${6}
+  runRemoteCommand ${1} ${2} ${3} "~" "setenforce 0"
+  deployNtpdate ${1} ${2} ${3} ${NTP_SERVER}
+}
+
+function initialCeph() {
+  local name
+  local ip
+  local password
+
+  updateRepo ${ADMIN_IP} "root" ${ADMIN_PASSWORD}
+
+  initialNode ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${ADMIN_HOSTNAME} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
+  for name in ${MONITOR_CLUSTER_NAMES}; do
+    ip=`eval echo '$'"MONITOR_IP_${name}"`
+    password=`eval echo '$'"MONITOR_PASSWORD_${name}"`
+    initialNode ${ip} "root" ${password} ${name} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
+    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --zone=public --add-service=ceph-mon --permanent"
+    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --reload"
+  done
+  for name in ${OSD_CLUSTER_NAMES}; do
+    ip=`eval echo '$'"OSD_IP_${name}"`
+    password=`eval echo '$'"OSD_PASSWORD_${name}"`
+    initialNode ${ip} "root" ${password} ${name} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
+    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --zone=public --add-service=ceph --permanent"
+    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --reload"
+  done
+}
+
+function installCephDeploy() {
   runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "yum install ceph-deploy -y"
   runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "mkdir -p ${CEPH_CLUSTER_ADMIN_DIRECTORY}"
   runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "chown ${CEPH_USER_NAME}:${CEPH_USER_NAME} ${CEPH_CLUSTER_ADMIN_DIRECTORY}"
@@ -185,54 +204,63 @@ EOF`
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy install ${MONITOR_CLUSTER_NAMES} ${OSD_CLUSTER_NAMES}"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy mon create-initial"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy admin ${MONITOR_CLUSTER_NAMES} ${OSD_CLUSTER_NAMES}"
+#  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy mgr create ${MONITOR_CLUSTER_NAMES}"
+  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy disk zap $(getOSDDiskArray)"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy osd create $(getOSDDiskArray)"
 }
 
 function startInstall() {
   ${ROOT}/init-esxi.sh
   initialCeph
+  deploySSHPassport ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
   installCephDeploy
 }
 
 ########################################################
 # Input Password
 ########################################################
-echo -n "New ${CEPH_USER_NAME} password: "
-stty -echo
-read CEPH_USER_PASSWORD
-stty echo
-echo ""
-echo -n "Retry ${CEPH_USER_NAME} password: "
-stty -echo
-read RETRY_CEPH_USER_PASSWORD
-stty echo
-echo ""
+#echo -n "New ${CEPH_USER_NAME} password: "
+#stty -echo
+#read CEPH_USER_PASSWORD
+#stty echo
+#echo ""
+#echo -n "Retry ${CEPH_USER_NAME} password: "
+#stty -echo
+#read RETRY_CEPH_USER_PASSWORD
+#stty echo
+#echo ""
+ADMIN_PASSWORD="World2019"
+CEPH_USER_PASSWORD="World2019"
+RETRY_CEPH_USER_PASSWORD="World2019"
+MONITOR_PASSWORD_mon01="World2019"
+OSD_PASSWORD_osd01="World2019"
+OSD_PASSWORD_osd02="World2019"
+OSD_PASSWORD_osd03="World2019"
 
 if [ "${CEPH_USER_PASSWORD}" == "${RETRY_CEPH_USER_PASSWORD}" ]; then
-  echo -n "root@${ADMIN_IP}(${ADMIN_HOSTNAME}) password: "
-  stty -echo
-  read ADMIN_PASSWORD
-  stty echo
-  echo ""
-
-
-  for name in ${MONITOR_CLUSTER_NAMES}; do
-    NODE_IP=`eval echo '$'"MONITOR_IP_${name}"`
-    echo -n "root@${NODE_IP}(${name}) password: "
-    stty -echo
-    read MONITOR_PASSWORD_${name}
-    stty echo
-    echo ""
-  done
-
-  for name in ${OSD_CLUSTER_NAMES}; do
-    NODE_IP=`eval echo '$'"OSD_IP_${name}"`
-    echo -n "root@${NODE_IP}(${name}) password: "
-    stty -echo
-    read OSD_PASSWORD_${name}
-    stty echo
-    echo ""
-  done
+#  echo -n "root@${ADMIN_IP}(${ADMIN_HOSTNAME}) password: "
+#  stty -echo
+#  read ADMIN_PASSWORD
+#  stty echo
+#  echo ""
+#
+#  for name in ${MONITOR_CLUSTER_NAMES}; do
+#    NODE_IP=`eval echo '$'"MONITOR_IP_${name}"`
+#    echo -n "root@${NODE_IP}(${name}) password: "
+#    stty -echo
+#    read MONITOR_PASSWORD_${name}
+#    stty echo
+#    echo ""
+#  done
+#
+#  for name in ${OSD_CLUSTER_NAMES}; do
+#    NODE_IP=`eval echo '$'"OSD_IP_${name}"`
+#    echo -n "root@${NODE_IP}(${name}) password: "
+#    stty -echo
+#    read OSD_PASSWORD_${name}
+#    stty echo
+#    echo ""
+#  done
 
   startInstall
 else
