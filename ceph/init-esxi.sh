@@ -69,4 +69,4 @@ EOF
 echo
 
 echo "Waiting ..."
-sleep 2
+sleep 3

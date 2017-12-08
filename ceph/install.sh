@@ -18,8 +18,6 @@ function getOSDDiskArray() {
   echo "${diskArray}"
 }
 
-
-
 # ${1} deploy ip
 # ${2} deploy user
 # ${3} deploy password
@@ -45,10 +43,9 @@ ${monHosts}
 ${osdHosts}
 
 ${ADMIN_IP}       ${ADMIN_HOSTNAME}
-${CLIENT_IP}       ${CLIENT_HOSTNAME}
 EOF`
 
-  forceWriteRemoteFile ${1} ${2} ${3} "/etc/hosts" ${content}
+  forceWriteRemoteFile ${1} ${2} ${3} "/etc/hosts" "${content}"
 }
 
 # ${1} deploy ip
@@ -110,14 +107,11 @@ function deploySSHPassport() {
 Host ${ADMIN_HOSTNAME}
   Hostname ${ADMIN_HOSTNAME}
   User ${CEPH_USER_NAME}
-Host ${CLIENT_HOSTNAME}
-  Hostname ${CLIENT_HOSTNAME}
-  User ${CEPH_USER_NAME}
 ${monHosts}
 ${osdHosts}
 EOF`
 
-  forceWriteRemoteFile ${1} ${2} ${3} "~/.ssh/config" ${content}
+  forceWriteRemoteFile ${1} ${2} ${3} "~/.ssh/config" "${content}"
   runRemoteCommand ${1} ${2} ${3} "~" "chmod 644 ~/.ssh/config"
   runRemoteCommand ${1} ${2} ${3} "~" "ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa"
 
@@ -160,6 +154,8 @@ function initialCeph() {
   runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "hostnamectl set-hostname ${ADMIN_HOSTNAME}"
   createUser ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
   deployNtpdate ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${NTP_SERVER}
+
+  deploySSHPassport ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
 }
 
 function installCephDeploy() {
@@ -175,6 +171,8 @@ gpgcheck=1
 type=rpm-md
 gpgkey=https://download.ceph.com/keys/release.asc
 EOF`
+  forceWriteRemoteFile ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "/etc/yum.repos.d/ceph.repo" "${content}"
+  runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "chmod 644 /etc/yum.repos.d/ceph.repo"
 
   runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "yum install ceph-deploy -y"
   runRemoteCommand ${ADMIN_IP} "root" ${ADMIN_PASSWORD} "~" "mkdir -p ${CEPH_CLUSTER_ADMIN_DIRECTORY}"
@@ -187,7 +185,6 @@ EOF`
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy admin ${MONITOR_CLUSTER_NAMES} ${OSD_CLUSTER_NAMES}"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy osd create $(getOSDDiskArray)"
 }
-
 
 function startInstall() {
   ${ROOT}/init-esxi.sh
@@ -239,5 +236,3 @@ if [ "${CEPH_USER_PASSWORD}" == "${RETRY_CEPH_USER_PASSWORD}" ]; then
 else
   echo "Password not match"
 fi
-
-
