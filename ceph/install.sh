@@ -135,6 +135,7 @@ function initialCeph() {
     createUser ${ip} "root" ${password} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
     runRemoteCommand ${ip} "root" ${password} "~" "setenforce 0"
     runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --zone=public --add-service=ceph-mon --permanent"
+    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --reload"
     deployNtpdate ${ip} "root" ${password} ${NTP_SERVER}
   done
 
@@ -147,6 +148,7 @@ function initialCeph() {
     createUser ${ip} "root" ${password} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
     runRemoteCommand ${ip} "root" ${password} "~" "setenforce 0"
     runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --zone=public --add-service=ceph --permanent"
+    runRemoteCommand ${ip} "root" ${password} "~" "firewall-cmd --reload"
     deployNtpdate ${ip} "root" ${password} ${NTP_SERVER}
   done
 
@@ -165,7 +167,7 @@ function installCephDeploy() {
   content=`cat<<EOF
 [ceph-noarch]
 name=Ceph noarch packages
-baseurl=http://mirrors.163.com/ceph/rpm-luminous/el7/noarch
+baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/noarch/
 enabled=1
 gpgcheck=1
 type=rpm-md
@@ -183,7 +185,6 @@ EOF`
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy install ${MONITOR_CLUSTER_NAMES} ${OSD_CLUSTER_NAMES}"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy mon create-initial"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy admin ${MONITOR_CLUSTER_NAMES} ${OSD_CLUSTER_NAMES}"
-  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy mgr create ${MONITOR_CLUSTER_NAMES}"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy osd create $(getOSDDiskArray)"
 }
 
