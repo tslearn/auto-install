@@ -132,7 +132,7 @@ function updateRepo() {
   runRemoteCommand ${1} ${2} ${3} "~" "yum clean all"
   runRemoteCommand ${1} ${2} ${3} "~" "rm -rf /var/cache/yum"
   runRemoteCommand ${1} ${2} ${3} "~" "rm -rf /etc/yum.repos.d/*.repo"
-  runRemoteCommand ${1} ${2} ${3} "~" "curl http://mirrors.163.com/.help/CentOS7-Base-163.repo > /etc/yum.repos.d/CentOS-Base.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "curl http://mirrors.aliyun.com/repo/Centos-7.repo > /etc/yum.repos.d/CentOS-Base.repo"
   runRemoteCommand ${1} ${2} ${3} "~" "curl http://mirrors.aliyun.com/repo/epel-7.repo > /etc/yum.repos.d/epel.repo"
   runRemoteCommand ${1} ${2} ${3} "~" "sed -i '/aliyuncs/d' /etc/yum.repos.d/CentOS-Base.repo"
   runRemoteCommand ${1} ${2} ${3} "~" "sed -i '/aliyuncs/d' /etc/yum.repos.d/epel.repo"
@@ -140,21 +140,35 @@ function updateRepo() {
   runRemoteCommand ${1} ${2} ${3} "~" "sed -i s'/enabled=1/enabled=0'/g /etc/yum/pluginconf.d/fastestmirror.conf"
 
   content=`cat<<EOF
+[ceph]
+name=Ceph packages for x86_64
+baseurl=https://download.ceph.com/rpm-luminous/el7/x86_64
+enabled=1
+priority=2
+gpgcheck=1
+gpgkey=https://download.ceph.com/keys/release.asc
+
 [ceph-noarch]
 name=Ceph noarch packages
-baseurl=http://mirrors.163.com/ceph/rpm-jewel/el7/noarch
+baseurl=https://download.ceph.com/rpm-luminous/el7/noarch
 enabled=1
+priority=2
 gpgcheck=1
-type=rpm-md
 gpgkey=https://download.ceph.com/keys/release.asc
-priority=10
+
+[ceph-source]
+name=Ceph source packages
+baseurl=https://download.ceph.com/rpm-luminous/el7/SRPMS
+enabled=0
+priority=2
+gpgcheck=1
+gpgkey=https://download.ceph.com/keys/release.asc
 EOF`
 
   forceWriteRemoteFile ${1} ${2} ${3} "/etc/yum.repos.d/ceph.repo" "${content}"
   runRemoteCommand ${1} ${2} ${3} "~" "yum makecache"
   #runRemoteCommand ${1} ${2} ${3} "~" "yum update -y"
 }
-
 
 # ${1} deploy ip
 # ${2} deploy user
@@ -163,6 +177,7 @@ EOF`
 # ${5} ceph user name
 # ${6} ceph user password
 function initialNode() {
+  updateRepo ${1} ${2} ${3}
   deployEtcHosts ${1} ${2} ${3}
   runRemoteCommand ${1} ${2} ${3} "~" "hostnamectl set-hostname ${4}"
   createUser ${1} ${2} ${3} ${5} ${6}
@@ -174,8 +189,6 @@ function initialCeph() {
   local name
   local ip
   local password
-
-  updateRepo ${ADMIN_IP} "root" ${ADMIN_PASSWORD}
 
   initialNode ${ADMIN_IP} "root" ${ADMIN_PASSWORD} ${ADMIN_HOSTNAME} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD}
   for name in ${MONITOR_CLUSTER_NAMES}; do
@@ -204,7 +217,7 @@ function installCephDeploy() {
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy install ${MONITOR_CLUSTER_NAMES} ${OSD_CLUSTER_NAMES}"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy mon create-initial"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy admin ${MONITOR_CLUSTER_NAMES} ${OSD_CLUSTER_NAMES}"
-#  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy mgr create ${MONITOR_CLUSTER_NAMES}"
+  runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy mgr create ${MONITOR_CLUSTER_NAMES}"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy disk zap $(getOSDDiskArray)"
   runRemoteCommand ${ADMIN_IP} ${CEPH_USER_NAME} ${CEPH_USER_PASSWORD} ${CEPH_CLUSTER_ADMIN_DIRECTORY} "ceph-deploy osd create $(getOSDDiskArray)"
 }
