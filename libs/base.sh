@@ -79,6 +79,7 @@ function copyRemoteFile() {
   runRemoteCommand ${1} ${2} ${3} "~" "mkdir -p `dirname ${5}`"
 
   /usr/bin/expect <<EOF
+set timeout 1800
 spawn scp ${4} ${2}@${1}:${5}
 expect {
   "password:" { send "${3}\r"}
@@ -99,6 +100,7 @@ function copyRemoteDirectory() {
   runRemoteCommand ${1} ${2} ${3} "~" "mkdir -p `dirname ${5}`"
 
   /usr/bin/expect <<EOF
+set timeout 1800
 spawn scp -r ${4} ${2}@${1}:${5}
 expect {
   "password:" { send "${3}\r"}
