@@ -232,48 +232,41 @@ function startInstall() {
 ########################################################
 # Input Password
 ########################################################
-#echo -n "New ${CEPH_USER_NAME} password: "
-#stty -echo
-#read CEPH_USER_PASSWORD
-#stty echo
-#echo ""
-#echo -n "Retry ${CEPH_USER_NAME} password: "
-#stty -echo
-#read RETRY_CEPH_USER_PASSWORD
-#stty echo
-#echo ""
-ADMIN_PASSWORD="World2019"
-CEPH_USER_PASSWORD="World2019"
-RETRY_CEPH_USER_PASSWORD="World2019"
-MONITOR_PASSWORD_mon01="World2019"
-OSD_PASSWORD_osd01="World2019"
-OSD_PASSWORD_osd02="World2019"
-OSD_PASSWORD_osd03="World2019"
+echo -n "New ${CEPH_USER_NAME} password: "
+stty -echo
+read CEPH_USER_PASSWORD
+stty echo
+echo ""
+echo -n "Retry ${CEPH_USER_NAME} password: "
+stty -echo
+read RETRY_CEPH_USER_PASSWORD
+stty echo
+echo ""
 
 if [ "${CEPH_USER_PASSWORD}" == "${RETRY_CEPH_USER_PASSWORD}" ]; then
-#  echo -n "root@${ADMIN_IP}(${ADMIN_HOSTNAME}) password: "
-#  stty -echo
-#  read ADMIN_PASSWORD
-#  stty echo
-#  echo ""
-#
-#  for name in ${MONITOR_CLUSTER_NAMES}; do
-#    NODE_IP=`eval echo '$'"MONITOR_IP_${name}"`
-#    echo -n "root@${NODE_IP}(${name}) password: "
-#    stty -echo
-#    read MONITOR_PASSWORD_${name}
-#    stty echo
-#    echo ""
-#  done
-#
-#  for name in ${OSD_CLUSTER_NAMES}; do
-#    NODE_IP=`eval echo '$'"OSD_IP_${name}"`
-#    echo -n "root@${NODE_IP}(${name}) password: "
-#    stty -echo
-#    read OSD_PASSWORD_${name}
-#    stty echo
-#    echo ""
-#  done
+  echo -n "root@${ADMIN_IP}(${ADMIN_HOSTNAME}) password: "
+  stty -echo
+  read ADMIN_PASSWORD
+  stty echo
+  echo ""
+
+  for name in ${MONITOR_CLUSTER_NAMES}; do
+    NODE_IP=`eval echo '$'"MONITOR_IP_${name}"`
+    echo -n "root@${NODE_IP}(${name}) password: "
+    stty -echo
+    read MONITOR_PASSWORD_${name}
+    stty echo
+    echo ""
+  done
+
+  for name in ${OSD_CLUSTER_NAMES}; do
+    NODE_IP=`eval echo '$'"OSD_IP_${name}"`
+    echo -n "root@${NODE_IP}(${name}) password: "
+    stty -echo
+    read OSD_PASSWORD_${name}
+    stty echo
+    echo ""
+  done
 
   startInstall
 else
