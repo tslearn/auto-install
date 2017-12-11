@@ -142,27 +142,27 @@ function updateRepo() {
   content=`cat<<EOF
 [ceph]
 name=Ceph packages for x86_64
-baseurl=https://download.ceph.com/rpm-luminous/el7/x86_64
+baseurl=https://mirrors.aliyun.com/ceph/rpm-luminous/el7/x86_64/
 enabled=1
 priority=2
 gpgcheck=1
-gpgkey=https://download.ceph.com/keys/release.asc
+gpgkey=https://mirrors.aliyun.com/ceph/keys/release.asc
 
 [ceph-noarch]
 name=Ceph noarch packages
-baseurl=https://download.ceph.com/rpm-luminous/el7/noarch
+baseurl=https://mirrors.aliyun.com/ceph/rpm-luminous/el7/noarch/
 enabled=1
 priority=2
 gpgcheck=1
-gpgkey=https://download.ceph.com/keys/release.asc
+gpgkey=https://mirrors.aliyun.com/ceph/keys/release.asc
 
 [ceph-source]
 name=Ceph source packages
-baseurl=https://download.ceph.com/rpm-luminous/el7/SRPMS
+baseurl=https://mirrors.aliyun.com/ceph/rpm-luminous/el7/SRPMS/
 enabled=0
 priority=2
 gpgcheck=1
-gpgkey=https://download.ceph.com/keys/release.asc
+gpgkey=https://mirrors.aliyun.com/ceph/keys/release.asc
 EOF`
 
   forceWriteRemoteFile ${1} ${2} ${3} "/etc/yum.repos.d/ceph.repo" "${content}"
