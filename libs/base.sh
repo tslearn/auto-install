@@ -76,6 +76,8 @@ EOF
 # ${4} local file path
 # ${5} remote file path
 function copyRemoteFile() {
+  runRemoteCommand ${1} ${2} ${3} "~" "mkdir -p `dirname ${5}`"
+
   /usr/bin/expect <<EOF
 spawn scp ${4} ${2}@${1}:${5}
 expect {
@@ -91,11 +93,43 @@ EOF
 # ${1} remote ip or hostname
 # ${2} remote user
 # ${3} remote password
+# ${4} local directory path
+# ${5} remote directory path
+function copyRemoteDirectory() {
+  runRemoteCommand ${1} ${2} ${3} "~" "mkdir -p `dirname ${5}`"
+
+  /usr/bin/expect <<EOF
+spawn scp -r ${4} ${2}@${1}:${5}
+expect {
+  "password:" { send "${3}\r"}
+  "Password:" { send "${3}\r"}
+  "yes/no" {  send "yes\r"; exp_continue }
+}
+expect "expect never get"
+EOF
+  echo
+}
+
+# ${1} remote ip or hostname
+# ${2} remote user
+# ${3} remote password
 # ${4} file path
 # ${5} file content
 function forceWriteRemoteFile() {
   forceWriteFile ~/copy_asiwniwlsnixe "${5}"
-  runRemoteCommand ${1} ${2} ${3} "~" "mkdir -p `dirname ${4}`"
   copyRemoteFile ${1} ${2} ${3} ~/copy_asiwniwlsnixe ${4}
   removeFile ~/copy_asiwniwlsnixe
+}
+
+# ${1} deploy ip
+# ${2} deploy user
+# ${3} deploy password
+# ${4} ntp server
+function deployNtpdate() {
+  runRemoteCommand ${1} ${2} ${3} "~" "timedatectl set-timezone Asia/Shanghai"
+  runRemoteCommand ${1} ${2} ${3} "~" "yum install ntpdate -y"
+  runRemoteCommand ${1} ${2} ${3} "~" "/sbin/ntpdate ${4}"
+  runRemoteCommand ${1} ${2} ${3} "~" "echo '*/20 * * * * /sbin/ntpdate  ${4} >> /var/log/ntpdate.log' > ntpcrontab"
+  runRemoteCommand ${1} ${2} ${3} "~" "crontab ntpcrontab"
+  runRemoteCommand ${1} ${2} ${3} "~" "rm -f ntpcrontab"
 }

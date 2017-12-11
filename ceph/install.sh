@@ -51,19 +51,6 @@ EOF`
 # ${1} deploy ip
 # ${2} deploy user
 # ${3} deploy password
-# ${4} ntp server
-function deployNtpdate() {
-  runRemoteCommand ${1} ${2} ${3} "~" "timedatectl set-timezone Asia/Shanghai"
-  runRemoteCommand ${1} ${2} ${3} "~" "yum install ntpdate -y"
-  runRemoteCommand ${1} ${2} ${3} "~" "/sbin/ntpdate ${4}"
-  runRemoteCommand ${1} ${2} ${3} "~" "echo '*/20 * * * * /sbin/ntpdate  ${4} >> /var/log/ntpdate.log' > ntpcrontab"
-  runRemoteCommand ${1} ${2} ${3} "~" "crontab ntpcrontab"
-  runRemoteCommand ${1} ${2} ${3} "~" "rm -f ntpcrontab"
-}
-
-# ${1} deploy ip
-# ${2} deploy user
-# ${3} deploy password
 # ${4} user name
 # ${5} user password
 function createUser() {

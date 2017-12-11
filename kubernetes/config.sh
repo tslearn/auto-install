@@ -6,6 +6,9 @@ DOCKER_VERSION="17.09.1-ce"
 ETCD_VERSION="v3.1.10"
 FLANNEL_VERSION="v0.9.1"
 
+# 时间同步服务器
+NTP_SERVER="ntp5.aliyun.com"
+
 # Etcd 集群配置
 ETCD_CLUSTER_NAMES="etcd01 etcd02 etcd03"
 ETCD_IP_etcd01="192.168.0.71"
