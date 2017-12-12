@@ -20,7 +20,7 @@ spec:
       containers:
       - name: grafana
         image: gcr.io/google-containers/heapster-grafana-amd64:v4.4.3
-        imagePullPolicy: Nerver
+        imagePullPolicy: Never
         ports:
           - containerPort: 3000
             protocol: TCP
@@ -88,7 +88,7 @@ spec:
       containers:
       - name: heapster
         image: gcr.io/google-containers/heapster-amd64:v1.4.3
-        imagePullPolicy: Nerver
+        imagePullPolicy: Never
         command:
         - /heapster
         - --source=kubernetes:https://kubernetes.default
@@ -284,7 +284,7 @@ spec:
       containers:
       - name: influxdb
         image: gcr.io/google-containers/heapster-influxdb-amd64:v1.3.3
-        imagePullPolicy: Nerver
+        imagePullPolicy: Never
         volumeMounts:
         - mountPath: /data
           name: influxdb-storage
