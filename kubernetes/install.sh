@@ -234,6 +234,42 @@ function installEtcdCluster() {
 # ${1} deploy ip
 # ${2} deploy user
 # ${3} deploy password
+function installDocker() {
+  # install
+  installBin ${1} ${2} ${3} "docker" "${DOCKER_VERSION}"
+
+  # make service
+  local content=`cat<<EOF
+[Unit]
+Description=Docker Application Container Engine
+Documentation=http://docs.docker.io
+
+[Service]
+EnvironmentFile=-${FLANNEL_DOCKER_ENV_FILE}
+Environment="PATH=${ROOT_INSTALL_DIR}/docker/${DOCKER_VERSION}/bin:/bin:/sbin:/usr/bin:/usr/sbin"
+ExecStart=${ROOT_INSTALL_DIR}/docker/${DOCKER_VERSION}/bin/dockerd \\\$DOCKER_NETWORK_OPTIONS --log-level=error
+ExecReload=/bin/kill -s HUP \\\$MAINPID
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitCORE=infinity
+Delegate=yes
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+EOF`
+
+  forceWriteRemoteFile ${1} ${2} ${3} "/etc/systemd/system/docker.service" "${content}"
+  runRemoteCommand ${1} ${2} ${3} "~" "systemctl daemon-reload"
+  runRemoteCommand ${1} ${2} ${3} "~" "systemctl enable docker"
+  runRemoteCommand ${1} ${2} ${3} "~" "systemctl start docker"
+}
+
+# ${1} deploy ip
+# ${2} deploy user
+# ${3} deploy password
 function installFlannel() {
   # install
   installBin ${1} ${2} ${3} "flannel" "${FLANNEL_VERSION}"
@@ -261,9 +297,9 @@ ExecStart=${ROOT_INSTALL_DIR}/flannel/${FLANNEL_VERSION}/bin/flanneld \\\\
   -etcd-cafile=${ROOT_INSTALL_DIR}/ssl/ca.pem \\\\
   -etcd-certfile=${ROOT_INSTALL_DIR}/ssl/flannel.pem \\\\
   -etcd-keyfile=${ROOT_INSTALL_DIR}/ssl/flannel-key.pem \\\\
-  -etcd-endpoints=${ETCD_ENDPOINTS} \\\\
+  -etcd-endpoints=$(getEtcdEndpoints) \\\\
   -etcd-prefix=${FLANNEL_ETCD_PREFIX}
-ExecStartPost=${ROOT_INSTALL_DIR}/flannel/${FLANNEL_VERSION}/bin/mk-docker-opts.sh -k DOCKER_NETWORK_OPTIONS -d \\\${FLANNEL_DOCKER_ENV_FILE}
+ExecStartPost=${ROOT_INSTALL_DIR}/flannel/${FLANNEL_VERSION}/bin/mk-docker-opts.sh -k DOCKER_NETWORK_OPTIONS -d ${FLANNEL_DOCKER_ENV_FILE}
 Restart=on-failure
 
 [Install]
@@ -376,7 +412,6 @@ EOF`
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl enable kube-controller-manager"
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl start kube-controller-manager"
 
-
   # make kube-scheduler.service
   local content=`cat<<EOF
 [Unit]
@@ -417,9 +452,8 @@ EOF`
   runRemoteCommand ${1} ${2} ${3} "~" "bash ~/flannel2etcd.sh"
   runRemoteCommand ${1} ${2} ${3} "~" "rm -rf ~/flannel2etcd.sh"
 
-
   # install flannel
-  installBin ${1} ${2} ${3} "flannel" "${FLANNEL_VERSION}"
+  installFlannel ${1} ${2} ${3}
 }
 
 #${ROOT}/init-esxi.sh
@@ -427,19 +461,4 @@ EOF`
 #sleep 5
 #installMaster ${KUBE_MASTER_IP} "root" "World2019"
 
-function test() {
-  local flannelCommand=`cat<<EOF
-#!/usr/bin/env bash
-etcdctl \\\\
-  --endpoints=$(getEtcdEndpoints) \\\\
-  --ca-file=${ROOT_INSTALL_DIR}/ssl/ca.pem \\\\
-  set ${FLANNEL_ETCD_PREFIX}/config '{"Network":"'${KUBE_CLUSTER_CIDR}'", "SubnetLen": 24, "Backend": {"Type": "vxlan"}}'
-EOF`
-
-  forceWriteRemoteFile ${1} ${2} ${3} "~/flannel2etcd.sh" "${flannelCommand}"
-  runRemoteCommand ${1} ${2} ${3} "~" "chmod 755 ~/flannel2etcd.sh"
-  runRemoteCommand ${1} ${2} ${3} "~" "bash ~/flannel2etcd.sh"
-  runRemoteCommand ${1} ${2} ${3} "~" "rm -rf ~/flannel2etcd.sh"
-}
-
-test ${KUBE_MASTER_IP} "root" "World2019"
+installDocker ${KUBE_MASTER_IP} "root" "World2019"

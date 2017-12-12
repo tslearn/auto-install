@@ -14,7 +14,7 @@ OSD_DISK_osd02="sdb"
 OSD_IP_osd03="192.168.0.93"
 OSD_DISK_osd03="sdb"
 
-NTP_SERVER="ntp5.aliyun.com"
+NTP_SERVER="1.cn.pool.ntp.org"
 CEPH_USER_NAME="ceph"
 CEPH_CLUSTER_ADMIN_DIRECTORY="/opt/ceph/cluster"
 CEPH_PUBLIC_NETWORK="192.168.0.0/24"
