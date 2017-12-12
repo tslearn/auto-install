@@ -101,12 +101,12 @@ function cacheMaster() {
   fi
 }
 
-function cacheWorker() {
-  if [ ! -d "${ROOT}/cache/worker/${KUBERNETES_VERSION}/bin" ]; then
-    makeEmptyDirectoryAndEnter ${ROOT}/cache/worker/${KUBERNETES_VERSION}/bin
+function cacheNode() {
+  if [ ! -d "${ROOT}/cache/node/${KUBERNETES_VERSION}/bin" ]; then
+    makeEmptyDirectoryAndEnter ${ROOT}/cache/node/${KUBERNETES_VERSION}/bin
     wget ${DOWNLOAD_URL_kubelet}
     wget ${DOWNLOAD_URL_kube_proxy}
-    chmod -R a+x ${ROOT}/cache/worker/${KUBERNETES_VERSION}/bin
+    chmod -R a+x ${ROOT}/cache/node/${KUBERNETES_VERSION}/bin
   fi
 }
 
@@ -116,4 +116,4 @@ cacheEtcd
 cacheFlannel
 cacheDocker
 cacheMaster
-cacheWorker
+cacheNode
