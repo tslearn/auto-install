@@ -72,6 +72,7 @@ spec:
       containers:
       - name: kubernetes-dashboard
         image: gcr.io/google_containers/kubernetes-dashboard-amd64:v1.7.1
+        imagePullPolicy: Nerver
         resources:
           # keep request = limit to keep this container in guaranteed class
           limits:

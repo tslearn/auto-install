@@ -91,6 +91,7 @@ spec:
       containers:
       - name: kubedns
         image: gcr.io/google_containers/k8s-dns-kube-dns-amd64:1.14.7
+        imagePullPolicy: Nerver
         resources:
           # TODO: Set memory limits when we've profiled the container for large
           # clusters, then set request = limit to keep this container in
@@ -143,6 +144,7 @@ spec:
           mountPath: /kube-dns-config
       - name: dnsmasq
         image: gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.7
+        imagePullPolicy: Nerver
         livenessProbe:
           httpGet:
             path: /healthcheck/dnsmasq
@@ -181,6 +183,7 @@ spec:
           mountPath: /etc/k8s/dns/dnsmasq-nanny
       - name: sidecar
         image: gcr.io/google_containers/k8s-dns-sidecar-amd64:1.14.7
+        imagePullPolicy: Nerver
         livenessProbe:
           httpGet:
             path: /metrics
