@@ -254,7 +254,8 @@ EOF`
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl enable docker"
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl start docker"
 
-  copyRemoteDirectory ${1} ${2} ${3} ${ROOT}/cache/images ${ROOT_INSTALL_DIR}/docker/images
+  copyRemoteFile ${1} ${2} ${3} ${ROOT}/cache/images/cache.tar.gz ${ROOT_INSTALL_DIR}/docker/images/cache.tar.gz
+  runRemoteCommand ${1} ${2} ${3} "~" "docker load < ${ROOT_INSTALL_DIR}/docker/images/cache.tar.gz"
 }
 
 # ${1} deploy ip
@@ -507,7 +508,7 @@ Requires=docker.service
 ExecStart=${ROOT_INSTALL_DIR}/node/${KUBERNETES_VERSION}/bin/kubelet \\\\
   --address=${1} \\\\
   --hostname-override=${1} \\\\
-  --pod-infra-container-image=registry.cn-beijing.aliyuncs.com/install-kubernetes/pod-infrastructure:v3.6.173.0.49-4 \\\\
+  --pod-infra-container-image=gcr.io/google_containers/pause-amd64:3.0 \\\\
   --kubeconfig=${ROOT_INSTALL_DIR}/ssl/kubeconfig \\\\
   --allow-privileged=true \\\\
   --cluster-dns=${KUBE_CLUSTER_DNS_SVC_IP} \\\\
@@ -608,5 +609,4 @@ function startInstall() {
   done
 }
 
-# startInstall
-copyRemoteDirectory "192.168.0.91" "root" "World2019" ${ROOT}/cache/images ${ROOT_INSTALL_DIR}/docker/
+startInstall

@@ -86,7 +86,7 @@ expect {
   "Password:" { send "${3}\r"}
   "yes/no" {  send "yes\r"; exp_continue }
 }
-expect "100%"
+expect "expect never get"
 EOF
   echo
 }
