@@ -253,6 +253,8 @@ EOF`
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl daemon-reload"
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl enable docker"
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl start docker"
+
+  copyRemoteDirectory ${1} ${2} ${3} ${ROOT}/cache/images ${ROOT_INSTALL_DIR}/docker/images
 }
 
 # ${1} deploy ip
@@ -606,4 +608,5 @@ function startInstall() {
   done
 }
 
-startInstall
+# startInstall
+copyRemoteDirectory "192.168.0.91" "root" "World2019" ${ROOT}/cache/images ${ROOT_INSTALL_DIR}/docker/
