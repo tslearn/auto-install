@@ -457,8 +457,6 @@ EOF`
 }
 
 
-
-
 # ${1} deploy ip
 # ${2} deploy user
 # ${3} deploy password
@@ -470,140 +468,111 @@ function installNode() {
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl disable firewalld"
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl stop firewalld"
 
-  # install
+  # install flannel
+  installFlannel ${1} ${2} ${3}
+
+  # install docker
+  installDocker ${1} ${2} ${3}
+
+  # install node
   installBin ${1} ${2} ${3} "node" "${KUBERNETES_VERSION}"
 
   # copy ssl
-  makeSSLAuthorFiles ${ROOT}/tmp node "127.0.0.1 ${KUBE_MASTER_IP} ${KUBE_CLUSTER_KUBERNETES_SVC_IP}" "kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster.local"
-  copyRemoteFile ${1} ${2} ${3} ${ROOT}/cache/ssl/token.csv ${ROOT_INSTALL_DIR}/ssl/token.csv
+  makeSSLAuthorFiles ${ROOT}/tmp node "127.0.0.1 ${ip} ${KUBE_CLUSTER_KUBERNETES_SVC_IP}" "cluster.local"
   copyRemoteFile ${1} ${2} ${3} ${ROOT}/tmp/ca.pem ${ROOT_INSTALL_DIR}/ssl/ca.pem
-  copyRemoteFile ${1} ${2} ${3} ${ROOT}/tmp/ca-key.pem ${ROOT_INSTALL_DIR}/ssl/ca-key.pem
-  copyRemoteFile ${1} ${2} ${3} ${ROOT}/tmp/master.pem ${ROOT_INSTALL_DIR}/ssl/master.pem
-  copyRemoteFile ${1} ${2} ${3} ${ROOT}/tmp/master-key.pem ${ROOT_INSTALL_DIR}/ssl/master-key.pem
+  copyRemoteFile ${1} ${2} ${3} ${ROOT}/tmp/node.pem ${ROOT_INSTALL_DIR}/ssl/node.pem
+  copyRemoteFile ${1} ${2} ${3} ${ROOT}/tmp/node-key.pem ${ROOT_INSTALL_DIR}/ssl/node-key.pem
   cd ~ && removeDirectory ${ROOT}/tmp
 
-  # make kube-apiserver.service
+  # make kubeconfig
+  local content=`cat<<EOF
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority: ${ROOT_INSTALL_DIR}/ssl/ca.pem
+    server: https://${KUBE_MASTER_IP}:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubelet
+  name: kubelet
+current-context: kubelet
+users:
+- name: kubelet
+  user:
+    token: ${KUBELET_TOKEN}
+EOF`
+  forceWriteRemoteFile ${1} ${2} ${3} "${ROOT_INSTALL_DIR}/ssl/kubeconfig" "${content}"
+
+  # make kubelet.service
   local content=`cat<<EOF
 [Unit]
-Description=Kubernetes API Server
+Description=Kubernetes Kubelet
 Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-After=network.target
-
+After=docker.service
+Requires=docker.service
 [Service]
-ExecStart=${ROOT_INSTALL_DIR}/master/${KUBERNETES_VERSION}/bin/kube-apiserver \\
-  --admission-control=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota \\
-  --advertise-address=${1} \\
-  --allow-privileged=true \\
-  --apiserver-count=1 \\
-  --authorization-mode=RBAC \\
-  --bind-address=${1} \\
-  --enable-swagger-ui=true \\
-  --insecure-bind-address=127.0.0.1 \\
-  --kubelet-certificate-authority=${ROOT_INSTALL_DIR}/ssl/ca.pem \\
-  --etcd-cafile=${ROOT_INSTALL_DIR}/ssl/ca.pem \\
-  --etcd-servers=$(getEtcdEndpoints) \\
-  --service-account-key-file=${ROOT_INSTALL_DIR}/ssl/ca-key.pem \\
-  --service-cluster-ip-range=${KUBE_SERVICE_CIDR} \\
-  --service-node-port-range=${KUBE_NODE_PORT_RANGE} \\
-  --tls-cert-file=${ROOT_INSTALL_DIR}/ssl/master.pem \\
-  --tls-private-key-file=${ROOT_INSTALL_DIR}/ssl/master-key.pem \\
-  --client-ca-file=${ROOT_INSTALL_DIR}/ssl/ca.pem \\
-  --token-auth-file=${ROOT_INSTALL_DIR}/ssl/token.csv \\
-  --logtostderr=true \\
+ExecStart=${ROOT_INSTALL_DIR}/node/${KUBERNETES_VERSION}/bin/kubelet \\\\
+  --address=${1} \\\\
+  --hostname-override=${1} \\\\
+  --pod-infra-container-image=registry.cn-beijing.aliyuncs.com/install-kubernetes/pod-infrastructure:v3.6.173.0.49-4 \\\\
+  --kubeconfig=${ROOT_INSTALL_DIR}/ssl/kubeconfig \\\\
+  --allow-privileged=true \\\\
+  --cluster-dns=${KUBE_CLUSTER_DNS_SVC_IP} \\\\
+  --cluster-domain=cluster.local. \\\\
+  --hairpin-mode promiscuous-bridge \\\\
+  --serialize-image-pulls=false \\\\
+  --tls-cert-file=${ROOT_INSTALL_DIR}/ssl/node.pem \\\\
+  --tls-private-key-file=${ROOT_INSTALL_DIR}/ssl/node-key.pem \\\\
+  --fail-swap-on=false \\\\
+  --logtostderr=true \\\\
   --v=2
 Restart=on-failure
 RestartSec=5
-Type=notify
+[Install]
+WantedBy=multi-user.target
+EOF`
+  forceWriteRemoteFile ${1} ${2} ${3} "/etc/systemd/system/kubelet.service" "${content}"
+  runRemoteCommand ${1} ${2} ${3} "~" "systemctl daemon-reload"
+  runRemoteCommand ${1} ${2} ${3} "~" "systemctl enable kubelet"
+  runRemoteCommand ${1} ${2} ${3} "~" "systemctl start kubelet"
+
+  # make kube-proxy.service
+  local content=`cat<<EOF
+[Unit]
+Description=Kubernetes Kube-Proxy Server
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+After=network.target
+[Service]
+ExecStart=${ROOT_INSTALL_DIR}/node/${KUBERNETES_VERSION}/bin/kube-proxy \\\\
+  --bind-address=${1} \\\\
+  --hostname-override=${1} \\\\
+  --cluster-cidr=${KUBE_SERVICE_CIDR} \\\\
+  --kubeconfig=${ROOT_INSTALL_DIR}/ssl/kubeconfig \\\\
+  --logtostderr=true \\\\
+  --v=2
+Restart=on-failure
+RestartSec=5
 LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
 EOF`
 
-  forceWriteRemoteFile ${1} ${2} ${3} "/etc/systemd/system/kube-apiserver.service" "${content}"
+  forceWriteRemoteFile ${1} ${2} ${3} "/etc/systemd/system/kube-proxy.service" "${content}"
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl daemon-reload"
-  runRemoteCommand ${1} ${2} ${3} "~" "systemctl enable kube-apiserver"
-  runRemoteCommand ${1} ${2} ${3} "~" "systemctl start kube-apiserver"
+  runRemoteCommand ${1} ${2} ${3} "~" "systemctl enable kube-proxy"
+  runRemoteCommand ${1} ${2} ${3} "~" "systemctl start kube-proxy"
 
-  # make kube-controller-manager.service
-  local content=`cat<<EOF
-[Unit]
-Description=Kubernetes Controller Manager
-Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-
-[Service]
-ExecStart=${ROOT_INSTALL_DIR}/master/${KUBERNETES_VERSION}/bin/kube-controller-manager \\
-  --cluster-name=kubernetes \\
-  --leader-elect=true \\
-  --master=http://127.0.0.1:8080 \\
-  --root-ca-file=${ROOT_INSTALL_DIR}/ssl/ca.pem \\
-  --service-cluster-ip-range=${KUBE_SERVICE_CIDR} \\
-  --pod-eviction-timeout 30s \\
-  --service-account-private-key-file=${ROOT_INSTALL_DIR}/ssl/ca-key.pem \\
-  --cluster-cidr=${KUBE_CLUSTER_CIDR} \\
-  --cluster-signing-cert-file=${ROOT_INSTALL_DIR}/ssl/ca.pem \\
-  --cluster-signing-key-file=${ROOT_INSTALL_DIR}/ssl/ca-key.pem \\
-  --logtostderr=true \\
-  --v=2
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF`
-
-  forceWriteRemoteFile ${1} ${2} ${3} "/etc/systemd/system/kube-controller-manager.service" "${content}"
-  runRemoteCommand ${1} ${2} ${3} "~" "systemctl daemon-reload"
-  runRemoteCommand ${1} ${2} ${3} "~" "systemctl enable kube-controller-manager"
-  runRemoteCommand ${1} ${2} ${3} "~" "systemctl start kube-controller-manager"
-
-  # make kube-scheduler.service
-  local content=`cat<<EOF
-[Unit]
-Description=Kubernetes Scheduler
-Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-
-[Service]
-ExecStart=${ROOT_INSTALL_DIR}/master/${KUBERNETES_VERSION}/bin/kube-scheduler \\
-  --master=http://127.0.0.1:8080 \\
-  --leader-elect=true \\
-  --logtostderr=true \\
-  --v=2
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF`
-
-  forceWriteRemoteFile ${1} ${2} ${3} "/etc/systemd/system/kube-scheduler.service" "${content}"
-  runRemoteCommand ${1} ${2} ${3} "~" "systemctl daemon-reload"
-  runRemoteCommand ${1} ${2} ${3} "~" "systemctl enable kube-scheduler"
-  runRemoteCommand ${1} ${2} ${3} "~" "systemctl start kube-scheduler"
-
-  # write flannel to etcd
-  installBin ${1} ${2} ${3} "etcdctl" "${ETCD_VERSION}"
-
-  local flannelCommand=`cat<<EOF
-#!/usr/bin/env bash
-etcdctl \\\\
-  --endpoints=$(getEtcdEndpoints) \\\\
-  --ca-file=${ROOT_INSTALL_DIR}/ssl/ca.pem \\\\
-  set ${FLANNEL_ETCD_PREFIX}/config '{"Network":"'${KUBE_CLUSTER_CIDR}'", "SubnetLen": 24, "Backend": {"Type": "vxlan"}}'
-EOF`
-
-  forceWriteRemoteFile ${1} ${2} ${3} "~/flannel2etcd.sh" "${flannelCommand}"
-  runRemoteCommand ${1} ${2} ${3} "~" "chmod 755 ~/flannel2etcd.sh"
-  runRemoteCommand ${1} ${2} ${3} "~" "bash ~/flannel2etcd.sh"
-  runRemoteCommand ${1} ${2} ${3} "~" "rm -rf ~/flannel2etcd.sh"
-
-  # install flannel
-  installFlannel ${1} ${2} ${3}
+  runRemoteCommand ${1} ${2} ${3} "~" "sysctl -w net.ipv4.ip_forward=1"
+  runRemoteCommand ${1} ${2} ${3} "~" "echo 'net.ipv4.ip_forward = 1' > /etc/sysctl.d/81-ipv4-forward.conf"
 }
 
-${ROOT}/init-esxi.sh
-installEtcdCluster
-sleep 5
-installMaster ${KUBE_MASTER_IP} "root" "World2019"
+#${ROOT}/init-esxi.sh
+#installEtcdCluster
+#sleep 5
+#installMaster ${KUBE_MASTER_IP} "root" "World2019"
 
-#installDocker ${KUBE_MASTER_IP} "root" "World2019"
+installNode "192.168.0.92" "root" "World2019"
