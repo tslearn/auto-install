@@ -3,6 +3,8 @@ readonly ROOT=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 source ${ROOT}/../libs/base.sh
 source ${ROOT}/config.sh
 
+source ${ROOT}/addons/dns.sh
+
 KUBE_APISERVER="https://${KUBE_MASTER_IP}:6443"
 
 function getEtcdNodes() {
@@ -596,6 +598,7 @@ function startInstall() {
 
   sleep 3
   installMaster ${KUBE_MASTER_IP} "root" ${MASTER_PASSWORD}
+  install-addons-dns ${KUBE_MASTER_IP} "root" ${MASTER_PASSWORD}
 
   sleep 3
   for name in ${NODE_CLUSTER_NAMES}; do
