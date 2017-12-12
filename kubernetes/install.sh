@@ -45,8 +45,6 @@ function getEtcdEndpoints() {
   echo "${ret}"
 }
 
-
-
 # ${1} directory
 # ${2} name
 # ${3} ip array string
@@ -217,18 +215,6 @@ function startEtcd() {
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl daemon-reload"
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl enable etcd"
   runRemoteCommand ${1} ${2} ${3} "~" "systemctl start etcd"
-}
-
-function installEtcdCluster() {
-  for name in ${ETCD_CLUSTER_NAMES}; do
-    installEtcd `eval echo '$'"ETCD_IP_${name}"` "root" "World2019" ${name}
-  done
-
-  for name in ${ETCD_CLUSTER_NAMES}; do
-    startEtcd `eval echo '$'"ETCD_IP_${name}"` "root" "World2019" &
-  done
-
-  wait
 }
 
 # ${1} deploy ip
@@ -460,7 +446,7 @@ EOF`
 # ${1} deploy ip
 # ${2} deploy user
 # ${3} deploy password
-function installNode() {
+function addNode() {
   # syn time
   deployNtpdate ${1} ${2} ${3} ${NTP_SERVER}
 
@@ -478,7 +464,7 @@ function installNode() {
   installBin ${1} ${2} ${3} "node" "${KUBERNETES_VERSION}"
 
   # copy ssl
-  makeSSLAuthorFiles ${ROOT}/tmp node "127.0.0.1 ${ip} ${KUBE_CLUSTER_KUBERNETES_SVC_IP}" "cluster.local"
+  makeSSLAuthorFiles ${ROOT}/tmp node "127.0.0.1 ${1} ${KUBE_CLUSTER_KUBERNETES_SVC_IP}" "cluster.local"
   copyRemoteFile ${1} ${2} ${3} ${ROOT}/tmp/ca.pem ${ROOT_INSTALL_DIR}/ssl/ca.pem
   copyRemoteFile ${1} ${2} ${3} ${ROOT}/tmp/node.pem ${ROOT_INSTALL_DIR}/ssl/node.pem
   copyRemoteFile ${1} ${2} ${3} ${ROOT}/tmp/node-key.pem ${ROOT_INSTALL_DIR}/ssl/node-key.pem
@@ -570,9 +556,51 @@ EOF`
   runRemoteCommand ${1} ${2} ${3} "~" "echo 'net.ipv4.ip_forward = 1' > /etc/sysctl.d/81-ipv4-forward.conf"
 }
 
-#${ROOT}/init-esxi.sh
-#installEtcdCluster
-#sleep 5
-#installMaster ${KUBE_MASTER_IP} "root" "World2019"
+function startInstall() {
+  local name
+  local ip
 
-installNode "192.168.0.92" "root" "World2019"
+  for name in ${ETCD_CLUSTER_NAMES}; do
+    ip=`eval echo '$'"ETCD_IP_${name}"`
+    echo -n "root@${ip}(${name}) password: "
+    stty -echo
+    read ETCD_PASSWORD_${name}
+    stty echo
+    echo ""
+  done
+
+  echo -n "root@${KUBE_MASTER_IP}(master) password: "
+  stty -echo
+  read MASTER_PASSWORD
+  stty echo
+  echo ""
+
+  for name in ${NODE_CLUSTER_NAMES}; do
+    ip=`eval echo '$'"NODE_IP_${name}"`
+    echo -n "root@${ip}(${name}) password: "
+    stty -echo
+    read NODE_PASSWORD_${name}
+    stty echo
+    echo ""
+  done
+
+  ${ROOT}/init-esxi.sh
+
+  for name in ${ETCD_CLUSTER_NAMES}; do
+    installEtcd `eval echo '$'"ETCD_IP_${name}"` "root" `eval echo '$'"ETCD_PASSWORD_${name}"` ${name}
+  done
+  for name in ${ETCD_CLUSTER_NAMES}; do
+    startEtcd `eval echo '$'"ETCD_IP_${name}"` "root" `eval echo '$'"ETCD_PASSWORD_${name}"` &
+  done
+  wait
+
+  sleep 3
+  installMaster ${KUBE_MASTER_IP} "root" ${MASTER_PASSWORD}
+
+  sleep 3
+  for name in ${NODE_CLUSTER_NAMES}; do
+    addNode `eval echo '$'"NODE_IP_${name}"` "root" `eval echo '$'"NODE_PASSWORD_${name}"`
+  done
+}
+
+startInstall
