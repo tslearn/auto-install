@@ -13,15 +13,16 @@ DOWNLOAD_URL_kube_controller_manager="https://storage.googleapis.com/kubernetes-
 DOWNLOAD_URL_kube_scheduler="https://storage.googleapis.com/kubernetes-release/release/${KUBERNETES_VERSION}/bin/linux/amd64/kube-scheduler"
 DOWNLOAD_URL_kubectl="https://storage.googleapis.com/kubernetes-release/release/${KUBERNETES_VERSION}/bin/linux/amd64/kubectl"
 
+#gcr.io/google_containers/heapster-amd64:v1.4.3
+#gcr.io/google_containers/heapster-influxdb-amd64:v1.3.3
+#gcr.io/google_containers/heapster-grafana-amd64:v4.4.3
+
 DOCKER_CACHE_IMAGES=`cat<<EOF
 gcr.io/google_containers/pause-amd64:3.0
 gcr.io/google_containers/kubernetes-dashboard-amd64:v1.7.1
 gcr.io/google_containers/k8s-dns-kube-dns-amd64:1.14.7
 gcr.io/google_containers/k8s-dns-sidecar-amd64:1.14.7
 gcr.io/google_containers/k8s-dns-dnsmasq-nanny-amd64:1.14.7
-gcr.io/google_containers/heapster-amd64:v1.4.3
-gcr.io/google_containers/heapster-influxdb-amd64:v1.3.3
-gcr.io/google_containers/heapster-grafana-amd64:v4.4.3
 EOF`
 
 function initCA() {
