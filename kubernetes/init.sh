@@ -13,6 +13,23 @@ DOWNLOAD_URL_kube_controller_manager="https://storage.googleapis.com/kubernetes-
 DOWNLOAD_URL_kube_scheduler="https://storage.googleapis.com/kubernetes-release/release/${KUBERNETES_VERSION}/bin/linux/amd64/kube-scheduler"
 DOWNLOAD_URL_kubectl="https://storage.googleapis.com/kubernetes-release/release/${KUBERNETES_VERSION}/bin/linux/amd64/kubectl"
 
+DOCKER_IMAGE_NAME_Pause="pause-amd64"
+DOCKER_IMAGE_VERSION_Pause="3.0"
+DOCKER_IMAGE_NAME_KubernetesDashboard="kubernetes-dashboard-amd64"
+DOCKER_IMAGE_VERSION_KubernetesDashboard="v1.7.1"
+DOCKER_IMAGE_NAME_K8sDns_KubeDns="k8s-dns-kube-dns-amd64"
+DOCKER_IMAGE_VERSION_K8sDns_KubeDns="1.14.7"
+DOCKER_IMAGE_NAME_K8sDns_Sidecar="k8s-dns-sidecar-amd64"
+DOCKER_IMAGE_VERSION_K8sDns_Sidecar="1.14.7"
+DOCKER_IMAGE_NAME_K8sDns_DnsmasqNanny="k8s-dns-dnsmasq-nanny-amd64"
+DOCKER_IMAGE_VERSION_K8sDns_DnsmasqNanny="1.14.7"
+DOCKER_IMAGE_NAME_Heapster="heapster-amd64"
+DOCKER_IMAGE_VERSION_Heapster="v1.4.3"
+DOCKER_IMAGE_NAME_HeapsterInfluxdb="heapster-influxdb-amd64"
+DOCKER_IMAGE_VERSION_HeapsterInfluxdb="v1.3.3"
+DOCKER_IMAGE_NAME_HeapsterGrafana="heapster-grafana-amd64"
+DOCKER_IMAGE_VERSION_HeapsterGrafana="v4.4.3"
+
 function initCA() {
   if [ ! -d "${ROOT}/cache/ssl" ]; then
     makeEmptyDirectoryAndEnter ${ROOT}/cache/ssl
@@ -110,10 +127,31 @@ function cacheNode() {
   fi
 }
 
-initCA
-initToken
-cacheEtcd
-cacheFlannel
-cacheDocker
-cacheMaster
-cacheNode
+# ${1} image name
+# ${2} image version
+function cacheGoogleContainerImage() {
+  mkdir -p ${ROOT}/cache/images/google_containers
+  docker pull gcr.io/google_containers/${1}:${2}
+  docker save -o ${ROOT}/cache/images/google_containers/${1}-${2}.tar gcr.io/google_containers/${1}:${2}
+}
+
+function cacheGoogleContainers() {
+  cacheGoogleContainerImage ${DOCKER_IMAGE_NAME_Pause}                ${DOCKER_IMAGE_VERSION_Pause}
+  cacheGoogleContainerImage ${DOCKER_IMAGE_NAME_KubernetesDashboard}  ${DOCKER_IMAGE_VERSION_KubernetesDashboard}
+  cacheGoogleContainerImage ${DOCKER_IMAGE_NAME_K8sDns_KubeDns}       ${DOCKER_IMAGE_VERSION_K8sDns_KubeDns}
+  cacheGoogleContainerImage ${DOCKER_IMAGE_NAME_K8sDns_Sidecar}       ${DOCKER_IMAGE_VERSION_K8sDns_Sidecar}
+  cacheGoogleContainerImage ${DOCKER_IMAGE_NAME_K8sDns_DnsmasqNanny}  ${DOCKER_IMAGE_VERSION_K8sDns_DnsmasqNanny}
+  cacheGoogleContainerImage ${DOCKER_IMAGE_NAME_Heapster}             ${DOCKER_IMAGE_VERSION_Heapster}
+  cacheGoogleContainerImage ${DOCKER_IMAGE_NAME_HeapsterInfluxdb}     ${DOCKER_IMAGE_VERSION_HeapsterInfluxdb}
+  cacheGoogleContainerImage ${DOCKER_IMAGE_NAME_HeapsterGrafana}      ${DOCKER_IMAGE_VERSION_HeapsterGrafana}
+}
+
+#initCA
+#initToken
+#cacheEtcd
+#cacheFlannel
+#cacheDocker
+#cacheMaster
+#cacheNode
+
+cacheGoogleContainers
