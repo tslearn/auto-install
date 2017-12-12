@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: grafana
-        image: gcr.io/google-containers/heapster-grafana-amd64:v4.4.3
+        image: registry.cn-beijing.aliyuncs.com/install-kubernetes/heapster-grafana-amd64:v4.4.3
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 3000
@@ -87,7 +87,7 @@ spec:
       serviceAccountName: heapster
       containers:
       - name: heapster
-        image: gcr.io/google-containers/heapster-amd64:v1.4.3
+        image: registry.cn-beijing.aliyuncs.com/install-kubernetes/heapster-amd64:v1.4.3
         imagePullPolicy: IfNotPresent
         command:
         - /heapster
@@ -95,7 +95,6 @@ spec:
         - --sink=influxdb:http://monitoring-influxdb:8086
 EOF`
   forceWriteRemoteFile ${1} ${2} ${3} "${ROOT_INSTALL_DIR}/yaml/heapster/heapster-deployment.yaml" "${content}"
-
 
   local content=`cat<<EOF
 apiVersion: v1
@@ -283,7 +282,7 @@ spec:
     spec:
       containers:
       - name: influxdb
-        image: gcr.io/google-containers/heapster-influxdb-amd64:v1.3.3
+        image: registry.cn-beijing.aliyuncs.com/install-kubernetes/heapster-influxdb-amd64:v1.3.3
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - mountPath: /data
