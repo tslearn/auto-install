@@ -38,21 +38,21 @@ expect {
 expect "root@"
 send "vim-cmd vmsvc/snapshot.revert ${ESXI_VMID_SUN01} 1 0 \r"
 
-#expect "root@"
-#send "vim-cmd vmsvc/snapshot.revert ${ESXI_VMID_SUN02} 1 0 \r"
+expect "root@"
+send "vim-cmd vmsvc/snapshot.revert ${ESXI_VMID_SUN02} 1 0 \r"
 #
 #expect "root@"
 #send "vim-cmd vmsvc/snapshot.revert ${ESXI_VMID_SUN03} 1 0 \r"
 #
-#expect "root@"
-#send "vim-cmd vmsvc/snapshot.revert ${ESXI_VMID_EARTH01} 1 0 \r"
-#
-#expect "root@"
-#send "vim-cmd vmsvc/snapshot.revert ${ESXI_VMID_EARTH02} 1 0 \r"
-#
+expect "root@"
+send "vim-cmd vmsvc/snapshot.revert ${ESXI_VMID_EARTH01} 1 0 \r"
+
+expect "root@"
+send "vim-cmd vmsvc/snapshot.revert ${ESXI_VMID_EARTH02} 1 0 \r"
+
 #expect "root@"
 #send "vim-cmd vmsvc/snapshot.revert ${ESXI_VMID_EARTH03} 1 0 \r"
-#
+
 #expect "root@"
 #send "vim-cmd vmsvc/snapshot.revert ${ESXI_VMID_MOON01} 1 0 \r"
 #

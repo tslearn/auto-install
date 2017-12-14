@@ -86,7 +86,7 @@ expect {
   "Password:" { send "${3}\r"}
   "yes/no" {  send "yes\r"; exp_continue }
 }
-expect "WAa7CWcd6Z9wtxnOzBM7HEP0z8XOMjrvgdGYWlpOK4MjnUqJkIa6KAMuheBv6eFq"
+expect "BIGlngkKxZ0mbzQEY6ZEF76HxatwOtO33HO9GnS8PLULmRHp0sMj4ppKwoIlSEHK"
 EOF
   echo
 }
@@ -107,7 +107,7 @@ expect {
   "Password:" { send "${3}\r"}
   "yes/no" {  send "yes\r"; exp_continue }
 }
-expect "WAa7CWcd6Z9wtxnOzBM7HEP0z8XOMjrvgdGYWlpOK4MjnUqJkIa6KAMuheBv6eFq"
+expect "BIGlngkKxZ0mbzQEY6ZEF76HxatwOtO33HO9GnS8PLULmRHp0sMj4ppKwoIlSEHK"
 EOF
   echo
 }
@@ -135,7 +135,6 @@ function deployNtpdate() {
   runRemoteCommand ${1} ${2} ${3} "~" "crontab ntpcrontab"
   runRemoteCommand ${1} ${2} ${3} "~" "rm -f ntpcrontab"
 }
-
 
 # ${1} deploy ip
 # ${2} deploy user
