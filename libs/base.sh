@@ -118,9 +118,9 @@ EOF
 # ${4} file path
 # ${5} file content
 function forceWriteRemoteFile() {
-  forceWriteFile ~/copy_asiwniwlsnixe "${5}"
-  copyRemoteFile ${1} ${2} ${3} ~/copy_asiwniwlsnixe ${4}
-  removeFile ~/copy_asiwniwlsnixe
+  forceWriteFile ~/WAa7CWcd6Z9wtxnOzBM7HEP0z8XOMjrvgdGYWlpOK4MjnUqJkIa6KAMuheBv6eFq "${5}"
+  copyRemoteFile ${1} ${2} ${3} ~/WAa7CWcd6Z9wtxnOzBM7HEP0z8XOMjrvgdGYWlpOK4MjnUqJkIa6KAMuheBv6eFq ${4}
+  removeFile ~/WAa7CWcd6Z9wtxnOzBM7HEP0z8XOMjrvgdGYWlpOK4MjnUqJkIa6KAMuheBv6eFq
 }
 
 # ${1} deploy ip
@@ -134,4 +134,20 @@ function deployNtpdate() {
   runRemoteCommand ${1} ${2} ${3} "~" "echo '*/20 * * * * /sbin/ntpdate  ${4} >> /var/log/ntpdate.log' > ntpcrontab"
   runRemoteCommand ${1} ${2} ${3} "~" "crontab ntpcrontab"
   runRemoteCommand ${1} ${2} ${3} "~" "rm -f ntpcrontab"
+}
+
+
+# ${1} deploy ip
+# ${2} deploy user
+# ${3} deploy password
+function useAliyunRepo_Centos7() {
+  runRemoteCommand ${1} ${2} ${3} "~" "yum clean all"
+  runRemoteCommand ${1} ${2} ${3} "~" "rm -rf /var/cache/yum"
+  runRemoteCommand ${1} ${2} ${3} "~" "rm -rf /etc/yum.repos.d/*.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "curl http://mirrors.aliyun.com/repo/Centos-7.repo > /etc/yum.repos.d/CentOS-Base.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "curl http://mirrors.aliyun.com/repo/epel-7.repo > /etc/yum.repos.d/epel.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "sed -i '/aliyuncs/d' /etc/yum.repos.d/CentOS-Base.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "sed -i '/aliyuncs/d' /etc/yum.repos.d/epel.repo"
+  runRemoteCommand ${1} ${2} ${3} "~" "sed -i s'/enabled=1/enabled=0'/g /etc/yum/pluginconf.d/fastestmirror.conf"
+  runRemoteCommand ${1} ${2} ${3} "~" "yum makecache"
 }
