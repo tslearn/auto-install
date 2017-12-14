@@ -86,7 +86,7 @@ expect {
   "Password:" { send "${3}\r"}
   "yes/no" {  send "yes\r"; exp_continue }
 }
-expect "expect never get"
+expect "WAa7CWcd6Z9wtxnOzBM7HEP0z8XOMjrvgdGYWlpOK4MjnUqJkIa6KAMuheBv6eFq"
 EOF
   echo
 }
@@ -107,7 +107,7 @@ expect {
   "Password:" { send "${3}\r"}
   "yes/no" {  send "yes\r"; exp_continue }
 }
-expect "expect never get"
+expect "WAa7CWcd6Z9wtxnOzBM7HEP0z8XOMjrvgdGYWlpOK4MjnUqJkIa6KAMuheBv6eFq"
 EOF
   echo
 }
