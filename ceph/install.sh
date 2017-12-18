@@ -114,8 +114,6 @@ EOF`
 # ${2} deploy user
 # ${3} deploy password
 function updateRepo() {
-  local content
-
   runRemoteCommand ${1} ${2} ${3} "~" "yum clean all"
   runRemoteCommand ${1} ${2} ${3} "~" "rm -rf /var/cache/yum"
   runRemoteCommand ${1} ${2} ${3} "~" "rm -rf /etc/yum.repos.d/*.repo"
@@ -126,7 +124,7 @@ function updateRepo() {
   runRemoteCommand ${1} ${2} ${3} "~" "sed -i 's/\\\$releasever/7/g' /etc/yum.repos.d/CentOS-Base.repo"
   runRemoteCommand ${1} ${2} ${3} "~" "sed -i s'/enabled=1/enabled=0'/g /etc/yum/pluginconf.d/fastestmirror.conf"
 
-  content=`cat<<EOF
+  local content=`cat<<EOF
 [ceph]
 name=Ceph packages for x86_64
 baseurl=https://mirrors.aliyun.com/ceph/rpm-luminous/el7/x86_64/
